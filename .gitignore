@@ -10,11 +10,12 @@ data/
 volumes/
 logs/
 tmp/
+__pycache__/
+*.pyc
 
 # Archivos de entorno
 .env
 .env.*
-.vscode/
 
 # Archivos de configuración locales
 docker-compose.override.yml
@@ -26,3 +27,7 @@ Thumbs.db
 # Archivos de usuario
 *.swp
 *.swo
+
+# Configuración de VSCode
+.vscode/
+.vscode

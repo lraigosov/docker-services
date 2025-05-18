@@ -4,12 +4,12 @@ Repositorio para gestionar y desplegar servicios utilizando Docker y Docker Comp
 
 ## Descripción
 
-Este proyecto contiene archivos de configuración y utilidades para levantar servicios en contenedores Docker, como n8n, PostgreSQL, Apache Hop y Apache NiFi.
+Este proyecto contiene archivos de configuración y utilidades para levantar servicios en contenedores Docker, incluyendo n8n, PostgreSQL, Apache Hop, Apache NiFi y Apache Airflow.
 
 ## Requisitos
 
 - [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/) (opcional, según los servicios que se agreguen)
+- [Docker Compose](https://docs.docker.com/compose/)
 
 ## Instalación
 
@@ -22,7 +22,7 @@ cd docker-services
 
 ## Uso
 
-Actualmente, el repositorio incluye archivos de configuración para servicios individuales (YAML), pero no un archivo `docker-compose.yml` general.  
+El repositorio incluye archivos de configuración para servicios individuales (`.yaml`).  
 Puedes utilizar los archivos `.yaml` para desplegar servicios específicos según tus necesidades.
 
 ## Guía de acceso a los servicios
@@ -63,15 +63,20 @@ Puedes utilizar los archivos `.yaml` para desplegar servicios específicos segú
    ```
 3. Accede a Apache NiFi en [http://localhost:8081](http://localhost:8081) (puerto por defecto, revisa el archivo YAML para confirmar).
 
-## Archivos y carpetas adicionales
+### Apache Airflow
 
-- `.gitignore`: Exclusiones recomendadas para proyectos Docker.
-- `estructura.txt`: Listado de archivos y carpetas del proyecto.
-- `.vscode/settings.json`: Configuración recomendada para el entorno de desarrollo.
+1. Revisa y adapta `airflow-service.yaml` y `airflow-service_variables` según tu entorno.
+2. Despliega el servicio con:
+   ```sh
+   docker compose -f airflow-service.yaml --env-file airflow-service_variables up -d
+   ```
+3. Accede a la interfaz web de Airflow en [http://localhost:8080](http://localhost:8080) (puerto por defecto, revisa el archivo YAML para confirmar).
 
 ## Estructura del proyecto
 
 - `.gitignore`
+- `airflow-service.yaml`
+- `airflow-service_variables`
 - `apache-hop-service.yaml`
 - `apache-nifi.service.yaml`
 - `estructura.txt`

@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    container_name: redis_server
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy volatile-lru --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - red-principal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  airflow-init:
+    image: apache/airflow:${AIRFLOW_VERSION}-python3.12
+    container_name: airflow_init
+    entrypoint: /bin/bash
+    command: -c "\
+      until pg_isready -h postgres_server -p 5432 -U ${POSTGRES_USER}; do echo 'Esperando PostgreSQL...'; sleep 5; done; \
+      PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres_server -U ${POSTGRES_USER} -p 5432 -tc \"SELECT 1 FROM pg_database WHERE datname = 'airflow';\" | grep -q 1 || PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres_server -U ${POSTGRES_USER} -p 5432 -c \"CREATE DATABASE airflow;\"; \
+      sleep 10; \
+      airflow db migrate && \
+      airflow fab-db migrate && \
+      sleep 60; \
+      psql postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow -c \"CREATE TABLE IF NOT EXISTS session (id SERIAL PRIMARY KEY, session_id VARCHAR(255) UNIQUE NOT NULL, data BYTEA, expiry TIMESTAMP);\" && \
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || echo 'Usuario admin ya existe'"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__SESSION_BACKEND: sqlalchemy
+      AIRFLOW__CELERY__BROKER_URL: redis://:${REDIS_PASSWORD}@redis_server:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.www.fab_security.manager.AuthDb
+    volumes:
+      - airflow_logs:/opt/airflow/logs
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    networks:
+      - red-principal
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  airflow-webserver:
+    image: apache/airflow:${AIRFLOW_VERSION}-python3.12
+    container_name: airflow_apiserver
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CELERY__BROKER_URL: redis://:${REDIS_PASSWORD}@redis_server:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.www.fab_security.manager.AuthDb
+    volumes:
+      - airflow_logs:/opt/airflow/logs
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    depends_on:
+      redis:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - red-principal
+    command: api-server
+
+  airflow-scheduler:
+    image: apache/airflow:${AIRFLOW_VERSION}-python3.12
+    container_name: airflow_scheduler
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CELERY__BROKER_URL: redis://:${REDIS_PASSWORD}@redis_server:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    volumes:
+      - airflow_logs:/opt/airflow/logs
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    depends_on:
+      redis:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - red-principal
+    command: scheduler
+
+  airflow-worker:
+    image: apache/airflow:${AIRFLOW_VERSION}-python3.12
+    container_name: airflow_worker
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CELERY__BROKER_URL: redis://:${REDIS_PASSWORD}@redis_server:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_server:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    volumes:
+      - airflow_logs:/opt/airflow/logs
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    depends_on:
+      redis:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - red-principal
+    command: celery worker
+
+volumes:
+  airflow_logs:
+  airflow_dags:
+  airflow_plugins:
+  redis_data:
+
+networks:
+  red-principal:
+    external: true
