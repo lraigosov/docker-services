@@ -10,7 +10,7 @@ networks:
 
 services:
   n8n-init:
-    image: postgres:15
+    image: postgres:latest
     container_name: n8n_init
     entrypoint: >
       bash -c "
