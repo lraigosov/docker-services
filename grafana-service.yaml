@@ -1,0 +1,74 @@
+version: '3.6'
+
+services:
+  grafana-init:
+    image: postgres:latest
+    container_name: grafana_init
+    entrypoint: >
+      bash -c "
+        until pg_isready -h ${GRAFANA_PG_HOST} -U ${GRAFANA_PG_USER}; do
+          echo 'Esperando a PostgreSQL...';
+          sleep 5;
+        done;
+        echo 'Verificando existencia de base de datos...';
+        psql -h ${GRAFANA_PG_HOST} -U ${GRAFANA_PG_USER} -tc \"SELECT 1 FROM pg_database WHERE datname = '${GRAFANA_PG_DATABASE}'\" | grep -q 1 || \
+        psql -h ${GRAFANA_PG_HOST} -U ${GRAFANA_PG_USER} -c \"CREATE DATABASE \\\"${GRAFANA_PG_DATABASE}\\\";\"
+        echo 'Finalizado. Apagando contenedor grafana-init.';
+      "
+    environment:
+      POSTGRES_HOST: ${GRAFANA_PG_HOST}
+      POSTGRES_USER: ${GRAFANA_PG_USER}
+      POSTGRES_PASSWORD: ${GRAFANA_PG_PASSWORD}
+      POSTGRES_DB: ${GRAFANA_PG_DATABASE}
+    volumes:
+      - db_storage:/var/lib/postgresql/data
+    networks:
+      - red-principal
+    restart: "no"
+    
+  grafana-server:
+    image: grafana/grafana:latest
+    container_name: grafana-server
+    restart: always
+    depends_on:
+      - grafana-init
+    networks:
+      - red-principal
+    environment:
+      # Usuario y contraseña del administrador, se recomienda parametrizar con .env externo
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      # Lista de plugins oficiales o de terceros a instalar automáticamente al iniciar
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+      # Permite la aceptación automática de las condiciones de uso (importante para entornos automáticos)
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+      # Configuración de la zona horaria por defecto (opcional)
+      - GF_DATE_FORMATS_DEFAULT_TIMEZONE=America/Bogota
+      # Configuración de idioma por defecto (opcional)
+      - GF_DEFAULT_LANGUAGE=es
+      # Opcional: Configuración de modo anónimo para acceso público (descomentar para habilitar)
+      # - GF_AUTH_ANONYMOUS_ENABLED=true
+      # - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=${GRAFANA_PG_HOST}:${GRAFANA_PG_PORT}
+      - GF_DATABASE_NAME=${GRAFANA_PG_DATABASE}
+      - GF_DATABASE_USER=${GRAFANA_PG_USER}
+      - GF_DATABASE_PASSWORD=${GRAFANA_PG_PASSWORD}
+    ports:
+      - '3000:3000'
+    volumes:
+      # Persistencia de datos, dashboards, usuarios, etc.
+      - grafana_data:/var/lib/grafana
+      # (Opcional) Mapeo para configuración personalizada
+      # - ./grafana/provisioning:/etc/grafana/provisioning
+      # - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+
+networks:
+  red-principal:
+    external: true
+
+volumes:
+  grafana_data:
+  db_storage:
+    # Si se quiere especificar un driver concreto, por ejemplo local:
+    driver: local
