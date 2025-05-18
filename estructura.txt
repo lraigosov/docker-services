@@ -7,6 +7,8 @@ F:.
 |   apache-hop-service.yaml
 |   apache-nifi.service.yaml
 |   estructura.txt
+|   grafana-service.yaml
+|   grafana-service_variables
 |   n8n-service.yaml
 |   n8n-service_variables
 |   postgresql-service.yaml
@@ -14,4 +16,4 @@ F:.
 |   
 \---.vscode
         settings.json
-
+        
