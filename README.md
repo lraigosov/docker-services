@@ -4,7 +4,7 @@ Repositorio para gestionar y desplegar servicios utilizando Docker y Docker Comp
 
 ## Descripción
 
-Este proyecto contiene archivos de configuración y utilidades para levantar servicios en contenedores Docker, como n8n y PostgreSQL.
+Este proyecto contiene archivos de configuración y utilidades para levantar servicios en contenedores Docker, como n8n, PostgreSQL, Apache Hop y Apache NiFi.
 
 ## Requisitos
 
@@ -25,23 +25,61 @@ cd docker-services
 Actualmente, el repositorio incluye archivos de configuración para servicios individuales (YAML), pero no un archivo `docker-compose.yml` general.  
 Puedes utilizar los archivos `.yaml` para desplegar servicios específicos según tus necesidades.
 
-### Archivos principales
+## Guía de acceso a los servicios
 
-- `n8n-service.yaml`: Configuración para el servicio n8n.
-- `n8n-service_variables`: Variables de entorno para n8n.
-- `postgresql-service.yaml`: Configuración para el servicio PostgreSQL.
+### n8n
 
-Consulta y adapta estos archivos según tu entorno y requerimientos.
+1. Revisa y adapta `n8n-service.yaml` y `n8n-service_variables` según tu entorno.
+2. Despliega el servicio con:
+   ```sh
+   docker compose -f n8n-service.yaml --env-file n8n-service_variables up -d
+   ```
+3. Accede a n8n desde tu navegador en [http://localhost:5678](http://localhost:5678) (puerto por defecto, revisa el archivo YAML para confirmar).
 
-## Estructura del proyecto
+### PostgreSQL
+
+1. Revisa y adapta `postgresql-service.yaml` según tu entorno.
+2. Despliega el servicio con:
+   ```sh
+   docker compose -f postgresql-service.yaml up -d
+   ```
+3. Conéctate a PostgreSQL usando un cliente en `localhost:5432` (puerto por defecto, revisa el archivo YAML para confirmar).
+
+### Apache Hop
+
+1. Revisa y adapta `apache-hop-service.yaml` según tu entorno.
+2. Despliega el servicio con:
+   ```sh
+   docker compose -f apache-hop-service.yaml up -d
+   ```
+3. Accede a Apache Hop en [http://localhost:8080](http://localhost:8080) (puerto por defecto, revisa el archivo YAML para confirmar).
+
+### Apache NiFi
+
+1. Revisa y adapta `apache-nifi.service.yaml` según tu entorno.
+2. Despliega el servicio con:
+   ```sh
+   docker compose -f apache-nifi.service.yaml up -d
+   ```
+3. Accede a Apache NiFi en [http://localhost:8081](http://localhost:8081) (puerto por defecto, revisa el archivo YAML para confirmar).
+
+## Archivos y carpetas adicionales
 
 - `.gitignore`: Exclusiones recomendadas para proyectos Docker.
 - `estructura.txt`: Listado de archivos y carpetas del proyecto.
-- `n8n-service.yaml`: Configuración de n8n.
-- `n8n-service_variables`: Variables de entorno para n8n.
-- `postgresql-service.yaml`: Configuración de PostgreSQL.
-- `README.md`: Documentación del proyecto.
 - `.vscode/settings.json`: Configuración recomendada para el entorno de desarrollo.
+
+## Estructura del proyecto
+
+- `.gitignore`
+- `apache-hop-service.yaml`
+- `apache-nifi.service.yaml`
+- `estructura.txt`
+- `n8n-service.yaml`
+- `n8n-service_variables`
+- `postgresql-service.yaml`
+- `README.md`
+- `.vscode/settings.json`
 
 ## Personalización
 

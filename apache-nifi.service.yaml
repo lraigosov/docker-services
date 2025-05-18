@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  nifi:
+    image: apache/nifi:latest
+    container_name: nifi
+    restart: unless-stopped
+    ports:
+      - "8443:8443"  # Accederás en https://localhost:9444/nifi
+    environment:
+      - NIFI_WEB_HTTPS_PORT=8443
+      - SINGLE_USER_CREDENTIALS_USERNAME=admin
+      - SINGLE_USER_CREDENTIALS_PASSWORD=admin123456789
+      - TZ=America/Bogota
+    volumes:
+      - nifi_conf:/opt/nifi/nifi-current/conf
+      - nifi_state:/opt/nifi/nifi-current/state
+      - nifi_content:/opt/nifi/nifi-current/content_repository
+      - nifi_provenance:/opt/nifi/nifi-current/provenance_repository
+      - nifi_database:/opt/nifi/nifi-current/database_repository
+      - nifi_python:/opt/nifi/nifi-current/python_extensions
+      - nifi_flowfile:/opt/nifi/nifi-current/flowfile_repository
+      - nifi_nar:/opt/nifi/nifi-current/nar_extensions
+      - nifi_logs:/opt/nifi/nifi-current/logs
+    networks:
+      - red-principal
+
+volumes:
+  nifi_conf:
+  nifi_state:
+  nifi_content:
+  nifi_provenance:
+  nifi_database:
+  nifi_python:
+  nifi_flowfile:
+  nifi_nar:
+  nifi_logs:
+
+networks:
+  red-principal:
+    external: true

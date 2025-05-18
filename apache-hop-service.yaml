@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  hop-init:
+    image: debian:bullseye-slim
+    container_name: hop-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        echo "�️ Iniciando creación de estructura Hop..."
+        mkdir -p /var/lib/apt/lists/partial && chmod 755 /var/lib/apt/lists/partial && \
+        apt-get update -qq && apt-get install -y -qq jq coreutils logrotate curl tree && \
+
+        mkdir -p /hop/projects/my_project/metadata/environments && \
+        mkdir -p /hop/projects/my_project/metadata/pipelines && \
+        mkdir -p /hop/projects/my_project/metadata/workflows && \
+        mkdir -p /hop/config && \
+        mkdir -p /var/log/hop && \
+        mkdir -p /usr/local/tomcat/webapps/ROOT/audit && \
+
+        echo "� Validando archivos..."
+
+        if [ ! -f /hop/projects/my_project/project-config.json ] || ! jq empty /hop/projects/my_project/project-config.json 2>/dev/null; then
+          echo "⚠️ Reescribiendo project-config.json"
+          echo '{ "projectName": "my_project", "configFilename": "project-config.json", "description": "Proyecto de ejemplo" }' > /hop/projects/my_project/project-config.json
+        else
+          echo "✔️ project-config.json válido"
+        fi
+
+        if [ ! -f /hop/projects/my_project/metadata/environments/dev.json ] || ! jq empty /hop/projects/my_project/metadata/environments/dev.json 2>/dev/null; then
+          echo "⚠️ Reescribiendo dev.json"
+          echo '{ "name": "dev", "projectName": "my_project", "projectConfigName": "project-config.json", "variables": {} }' > /hop/projects/my_project/metadata/environments/dev.json
+        else
+          echo "✔️ dev.json válido"
+        fi
+
+        if [ ! -f /hop/config/hop-config.json ] || ! jq empty /hop/config/hop-config.json 2>/dev/null; then
+          echo "⚠️ Reescribiendo hop-config.json"
+          echo '{ "default_project": "my_project", "default_environment": "dev" }' > /hop/config/hop-config.json
+        else
+          echo "✔️ hop-config.json válido"
+        fi
+
+        echo "�️ Ajustando permisos..."
+        chmod -R a+rw /hop/projects /hop/config /var/log/hop /usr/local/tomcat/webapps/ROOT/audit
+
+        echo "✅ hop-init completado correctamente."
+        sha256sum /hop/config/hop-config.json > /hop/config/hop-config.json.sha256
+        sha256sum /hop/projects/my_project/project-config.json > /hop/projects/my_project/project-config.json.sha256
+        sha256sum /hop/projects/my_project/metadata/environments/dev.json > /hop/projects/my_project/metadata/environments/dev.json.sha256
+
+        echo "� Eliminando hashes con más de 7 días..."
+        find /hop -name "*.sha256" -type f -mtime +7 -exec rm -f {} +
+
+        touch /hop/config/.hop_init_done
+    volumes:
+      - ./projects:/hop/projects
+      - ./config:/hop/config
+      - ./logs:/var/log/hop
+      - ./audit:/usr/local/tomcat/webapps/ROOT/audit
+    restart: "no"
+    networks:
+      - red-principal
+
+  hop-server:
+    image: apache/hop:2.13.0
+    container_name: hop-server
+    ports:
+      - "8181:8181"
+    environment:
+      HOP_SERVER_PORT: 8181
+      HOP_SERVER_USER: admin
+      HOP_SERVER_PASS: admin123456
+      HOP_PROJECT_NAME: my_project
+      HOP_PROJECT_FOLDER: /hop/projects/my_project
+      HOP_ENVIRONMENT_NAME: dev
+      HOP_CONFIG_FOLDER: /hop/config
+    volumes:
+      - ./projects:/hop/projects
+      - ./config:/hop/config
+      - ./files:/files
+      - ./logs:/var/log/hop
+    command: >
+      bash -c "
+        echo '⏳ Esperando que hop-init finalice...';
+        while [ ! -f /hop/config/.hop_init_done ]; do sleep 5; done;
+        echo '✅ hop-init finalizado. Esperando 60s extra por estabilidad...';
+        sleep 60;
+        echo '✔️ Validando archivos Hop Server...';
+        sha256sum -c /hop/config/hop-config.json.sha256 || { echo '❌ hop-config.json ha sido alterado o está corrupto'; exit 1; };
+        sha256sum -c /hop/projects/my_project/project-config.json.sha256 || { echo '❌ project-config.json ha sido alterado o está corrupto'; exit 1; };
+        sha256sum -c /hop/projects/my_project/metadata/environments/dev.json.sha256 || { echo '❌ dev.json ha sido alterado o está corrupto'; exit 1; };
+        echo '✔️ Archivos verificados. Iniciando Hop Server...';
+        exec hop-server.sh -run"
+    restart: unless-stopped
+    depends_on:
+      - hop-init
+    networks:
+      - red-principal
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://localhost:8181"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  hop-web:
+    image: apache/hop-web:2.13.0
+    container_name: hop-web
+    ports:
+      - "8080:8080"
+    environment:
+      HOP_PROJECT_NAME: my_project
+      HOP_PROJECT_FOLDER: /hop/projects/my_project
+      HOP_ENVIRONMENT_NAME: dev
+      HOP_CONFIG_FOLDER: /hop/config
+    volumes:
+      - ./projects:/hop/projects
+      - ./config:/hop/config
+      - ./logs:/var/log/hop
+      - ./audit:/usr/local/tomcat/webapps/ROOT/audit
+    restart: unless-stopped
+    depends_on:
+      - hop-init
+      - hop-server
+    networks:
+      - red-principal
+    command: >
+      bash -c "
+        echo '⏳ Esperando que hop-init finalice...';
+        while [ ! -f /hop/config/.hop_init_done ]; do sleep 5; done;
+        echo '✅ hop-init finalizado. Esperando 60s extra por estabilidad...';
+        sleep 60;
+        echo '✔️ Validando archivos Hop Web...';
+        apt-get update -qq && apt-get install -y -qq jq coreutils tree logrotate curl || echo '⚠️ No se pudo instalar herramientas de inspección';
+        tree /hop/config /hop/projects || echo '⚠️ Error listando estructura';
+        sha256sum -c /hop/config/hop-config.json.sha256 || { echo '❌ hop-config.json ha sido alterado o está corrupto'; exit 1; };
+        sha256sum -c /hop/projects/my_project/project-config.json.sha256 || { echo '❌ project-config.json ha sido alterado o está corrupto'; exit 1; };
+        sha256sum -c /hop/projects/my_project/metadata/environments/dev.json.sha256 || { echo '❌ dev.json ha sido alterado o está corrupto'; exit 1; };
+        echo '✔️ Archivos verificados. Iniciando Hop Web...';
+        catalina.sh run"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  red-principal:
+    external: true
