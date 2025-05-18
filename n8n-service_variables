@@ -1,0 +1,4 @@
+POSTGRES_DB=n8n
+POSTGRES_PASSWORD=postgrespw
+POSTGRES_USER=postgres
+POSTGRES_HOST=postgres_server
