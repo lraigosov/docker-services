@@ -2,6 +2,36 @@
 
 Repositorio para gestionar y desplegar servicios utilizando Docker y Docker Compose.
 
+## Instalación de Docker y Portainer en Ubuntu
+
+### Instalar Docker
+
+```sh
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+```
+> **Nota:** Cierra la sesión y vuelve a entrar para que los cambios de grupo tengan efecto.
+
+### Instalar Portainer
+
+```sh
+docker volume create portainer_data
+docker run -d -p 9443:9443 --name portainer --restart=always \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v portainer_data:/data \
+  portainer/portainer-ce:latest
+```
+Accede a Portainer en [https://localhost:9443](https://localhost:9443) y sigue las instrucciones para crear el usuario administrador.
+
 ## Descripción
 
 Este proyecto contiene archivos de configuración y utilidades para levantar servicios en contenedores Docker, facilitando el desarrollo y pruebas de herramientas como n8n, PostgreSQL, Apache Hop, Apache NiFi, Airflow y Grafana.
