@@ -1,0 +1,28 @@
+# Archivos y carpetas generados por Docker
+*.log
+*.pid
+*.seed
+*.bak
+*.tmp
+
+# Carpetas de volúmenes y datos
+data/
+volumes/
+logs/
+tmp/
+
+# Archivos de entorno
+.env
+.env.*
+.vscode/
+
+# Archivos de configuración locales
+docker-compose.override.yml
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de usuario
+*.swp
+*.swo
