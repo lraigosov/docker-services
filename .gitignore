@@ -31,3 +31,18 @@ Thumbs.db
 # Configuración de VSCode
 .vscode/
 .vscode
+
+# Dev log local
+devlog.md
+
+# Artefactos locales de servicios
+audit/
+files/
+projects/
+config/.env
+config/.hop_init_done
+config/hop-config.json
+config/*.sha256
+
+# Backups locales
+backups/

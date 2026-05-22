@@ -1,4 +1,4 @@
-version: '3.8'
+name: apache-hop
 
 services:
   hop-init:
@@ -56,10 +56,10 @@ services:
 
         touch /hop/config/.hop_init_done
     volumes:
-      - ./projects:/hop/projects
-      - ./config:/hop/config
-      - ./logs:/var/log/hop
-      - ./audit:/usr/local/tomcat/webapps/ROOT/audit
+      - ../projects:/hop/projects
+      - ../config:/hop/config
+      - ../logs:/var/log/hop
+      - ../audit:/usr/local/tomcat/webapps/ROOT/audit
     restart: "no"
     networks:
       - red-principal
@@ -78,10 +78,10 @@ services:
       HOP_ENVIRONMENT_NAME: dev
       HOP_CONFIG_FOLDER: /hop/config
     volumes:
-      - ./projects:/hop/projects
-      - ./config:/hop/config
-      - ./files:/files
-      - ./logs:/var/log/hop
+      - ../projects:/hop/projects
+      - ../config:/hop/config
+      - ../files:/files
+      - ../logs:/var/log/hop
     command: >
       bash -c "
         echo '⏳ Esperando que hop-init finalice...';
@@ -110,17 +110,17 @@ services:
     image: apache/hop-web:2.13.0
     container_name: hop-web
     ports:
-      - "8080:8080"
+      - "${HOP_WEB_PORT:-8081}:8080"
     environment:
       HOP_PROJECT_NAME: my_project
       HOP_PROJECT_FOLDER: /hop/projects/my_project
       HOP_ENVIRONMENT_NAME: dev
       HOP_CONFIG_FOLDER: /hop/config
     volumes:
-      - ./projects:/hop/projects
-      - ./config:/hop/config
-      - ./logs:/var/log/hop
-      - ./audit:/usr/local/tomcat/webapps/ROOT/audit
+      - ../projects:/hop/projects
+      - ../config:/hop/config
+      - ../logs:/var/log/hop
+      - ../audit:/usr/local/tomcat/webapps/ROOT/audit
     restart: unless-stopped
     depends_on:
       - hop-init

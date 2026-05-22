@@ -1,0 +1,24 @@
+name: nodered
+
+services:
+  nodered:
+    image: nodered/node-red:latest
+    container_name: nodered
+    restart: unless-stopped
+    ports:
+      - "${NODERED_PORT:-1880}:1880"
+    environment:
+      TZ: ${NODERED_TZ:-America/Bogota}
+    volumes:
+      - nodered_data:/data
+    networks:
+      - red-principal
+
+volumes:
+  nodered_data:
+    name: nodered_nodered_data
+    external: true
+
+networks:
+  red-principal:
+    external: true

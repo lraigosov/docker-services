@@ -1,19 +1,38 @@
-Listado de rutas de carpetas para el volumen Datos_D
-El número de serie del volumen es 8EF5-3C30
-F:.
+Estructura recomendada del repositorio docker-services
+
+docker-services/
 |   .gitignore
-|   airflow-service.yaml
-|   airflow-service_variables
-|   apache-hop-service.yaml
-|   apache-nifi.service.yaml
-|   estructura.txt
-|   grafana-service.yaml
-|   grafana-service_variables
-|   n8n-service.yaml
-|   n8n-service_variables
-|   postgresql-service.yaml
 |   README.md
-|   
-\---.vscode
+|   estructura.txt
+|   container-audit-ubuntu-24.04.md
+|   devlog.md
+|
++---compose/
+|       airflow-service.yaml
+|       apache-hop-service.yaml
+|       apache-nifi.service.yaml
+|       cassandra-service.yaml
+|       grafana-service.yaml
+|       mysql-service.yaml
+|       n8n-service.yaml
+|       nodered-service.yaml
+|       postgresql-service.yaml
+|
++---env/
+|       airflow-service.env
+|       cassandra-service.env
+|       grafana-service.env
+|       mysql-service.env
+|       n8n-service.env
+|       nodered-service.env
+|
++---config/
+|       .env
+|
++---audit/
++---files/
++---logs/
++---projects/
+\---.vscode/
         settings.json
         
