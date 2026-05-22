@@ -1,3 +1,5 @@
+name: postgresql
+
 services:
   postgres:
     image: postgres:latest
@@ -9,22 +11,27 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespw
       POSTGRES_DB: postgres_db
-      POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_latest:/var/lib/postgresql
     command: >
       postgres 
       -c listen_addresses='*'
       -c max_connections=100
       -c shared_buffers=128MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
     networks:
       - red-principal
 
 volumes:
-  postgres_data:
-    name: postgres_data
+  postgres_data_latest:
+    name: postgresql_postgres_data_latest
+    external: true
 
 networks:
   red-principal:
