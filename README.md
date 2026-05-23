@@ -46,28 +46,28 @@ Este repositorio resuelve tres problemas comunes en equipos de datos e integraci
 
 ```mermaid
 flowchart LR
-  PG[(PostgreSQL)]
-  REDIS[(Redis)]
-  N8N[n8n]
-  AFI[airflow-init]
-  AWS[airflow-webserver]
-  ASC[airflow-scheduler]
-  AWK[airflow-worker]
-  GFI[grafana-init]
-  GRA[Grafana]
-  HOP[Apache Hop]
-  NIFI[Apache NiFi]
+  pg["PostgreSQL"]
+  redis["Redis"]
+  n8n["n8n"]
+  airflowInit["airflow-init"]
+  airflowWeb["airflow-webserver"]
+  airflowScheduler["airflow-scheduler"]
+  airflowWorker["airflow-worker"]
+  grafanaInit["grafana-init"]
+  grafana["Grafana"]
+  hop["Apache Hop"]
+  nifi["Apache NiFi"]
 
-  N8N --> PG
-  AFI --> PG
-  AWS --> PG
-  ASC --> PG
-  AWK --> PG
-  AWS --> REDIS
-  ASC --> REDIS
-  AWK --> REDIS
-  GFI --> PG
-  GRA --> PG
+  n8n --> pg
+  airflowInit --> pg
+  airflowWeb --> pg
+  airflowScheduler --> pg
+  airflowWorker --> pg
+  airflowWeb --> redis
+  airflowScheduler --> redis
+  airflowWorker --> redis
+  grafanaInit --> pg
+  grafana --> pg
 ```
 
 ## Requisitos
