@@ -40,25 +40,83 @@ Este repositorio resuelve tres problemas comunes en equipos de datos e integraci
 - Cassandra: base NoSQL distribuida opcional para alta escritura.
 - Portainer: administración visual del ciclo operativo de contenedores.
 - Portainer Agent: endpoint remoto opcional para administrar otros hosts Docker desde Portainer.
+- Qwen3-Coder sobre Ollama: modelo orientado a desarrollo y asistencia de código.
+- Qwen3 sobre Ollama: modelo multipropósito expuesto como servicio local.
 - Open WebUI: interfaz web tipo ChatGPT para consumir modelos de Ollama.
+- LibreChat: chat multi-endpoint para consumir modelos locales y futuras extensiones.
 
 ## Arquitectura lógica
 
 ```mermaid
-flowchart LR
-  pg["PostgreSQL"]
-  redis["Redis"]
-  n8n["n8n"]
-  airflowInit["airflow-init"]
-  airflowWeb["airflow-webserver"]
-  airflowScheduler["airflow-scheduler"]
-  airflowWorker["airflow-worker"]
-  grafanaInit["grafana-init"]
-  grafana["Grafana"]
-  hop["Apache Hop"]
-  nifi["Apache NiFi"]
+flowchart TB
+  subgraph clients["Clientes y acceso"]
+    web["Navegador"]
+    ide["VS Code / Continue"]
+    api["Clientes LAN / API"]
+    ops["Operador"]
+  end
 
+  subgraph host["Host Docker en WSL Ubuntu-24.04"]
+    subgraph bridge["Servicios en bridge y acceso al motor Docker"]
+      dockerSock["Docker socket"]
+      portainer["Portainer"]
+      portainerAgent["Portainer Agent opcional"]
+    end
+
+    subgraph principal["Servicios conectados a la red red-principal"]
+      pg["PostgreSQL compartido"]
+      redis["Redis"]
+      n8nInit["n8n-init"]
+      n8n["n8n"]
+      airflowInit["airflow-init"]
+      airflowWeb["airflow-webserver"]
+      airflowScheduler["airflow-scheduler"]
+      airflowWorker["airflow-worker"]
+      grafanaInit["grafana-init"]
+      grafana["Grafana"]
+      hopInit["hop-init"]
+      hopServer["Hop Server"]
+      hopWeb["Hop Web"]
+      nifi["Apache NiFi"]
+      nodered["Node-RED"]
+      mysql["MySQL opcional"]
+      cassandra["Cassandra opcional"]
+      qwenCoderInit["qwen3-coder-init"]
+      qwenCoder["Ollama qwen3-coder"]
+      qwenCoderModel["Modelo qwen3-coder:latest"]
+      qwenGeneralInit["qwen3-init"]
+      qwenGeneral["Ollama qwen3"]
+      qwenGeneralModel["Modelo qwen3:latest"]
+      openWebui["Open WebUI"]
+      librechat["LibreChat"]
+      librechatMongo["LibreChat MongoDB"]
+      librechatSearch["LibreChat Meilisearch"]
+      librechatRag["LibreChat RAG API"]
+      librechatVector["LibreChat VectorDB"]
+    end
+  end
+
+  ops --> portainer
+  portainer --> dockerSock
+  portainerAgent --> dockerSock
+  portainer -.-> portainerAgent
+
+  web --> n8n
+  web --> airflowWeb
+  web --> grafana
+  web --> hopWeb
+  web --> nifi
+  web --> nodered
+  web --> openWebui
+  web --> librechat
+
+  api --> qwenCoder
+  api --> qwenGeneral
+  ide --> qwenCoder
+
+  n8nInit --> pg
   n8n --> pg
+
   airflowInit --> pg
   airflowWeb --> pg
   airflowScheduler --> pg
@@ -66,9 +124,35 @@ flowchart LR
   airflowWeb --> redis
   airflowScheduler --> redis
   airflowWorker --> redis
+
   grafanaInit --> pg
   grafana --> pg
+
+  hopInit --> hopServer
+  hopInit --> hopWeb
+  hopWeb --> hopServer
+
+  qwenCoderInit --> qwenCoder
+  qwenCoder --> qwenCoderModel
+  qwenGeneralInit --> qwenGeneral
+  qwenGeneral --> qwenGeneralModel
+
+  openWebui --> qwenCoder
+  openWebui --> qwenGeneral
+
+  librechat --> qwenCoder
+  librechat --> qwenGeneral
+  librechat --> librechatMongo
+  librechat --> librechatSearch
+  librechat --> librechatRag
+  librechatRag --> librechatVector
 ```
+
+Notas de arquitectura:
+
+- La red externa `red-principal` interconecta los servicios de datos, automatización e IA del host.
+- `portainer` y `portainer-agent` usan `bridge` y el socket Docker para administración operativa, por eso se representan fuera de `red-principal`.
+- `Open WebUI` y `LibreChat` consumen ambos endpoints Ollama (`qwen3-coder` y `qwen3`) desplegados en contenedores separados.
 
 ## Requisitos
 
