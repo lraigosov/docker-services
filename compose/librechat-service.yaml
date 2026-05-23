@@ -1,0 +1,103 @@
+name: librechat
+
+services:
+  librechat:
+    image: registry.librechat.ai/danny-avila/librechat-dev:latest
+    container_name: librechat
+    restart: "no"
+    depends_on:
+      - mongodb
+      - meilisearch
+      - rag_api
+    ports:
+      - "3200:3200"
+    env_file:
+      - ../env/librechat-service.env
+    environment:
+      HOST: 0.0.0.0
+      CONFIG_PATH: /app/librechat.yaml
+      MONGO_URI: mongodb://mongodb:27017/LibreChat
+      MEILI_HOST: http://meilisearch:7700
+      RAG_API_URL: http://rag_api:8000
+    volumes:
+      - ../env/librechat-service.env:/app/.env:ro
+      - ../config/librechat.yaml:/app/librechat.yaml:ro
+      - librechat_images:/app/client/public/images
+      - librechat_uploads:/app/uploads
+      - librechat_logs:/app/logs
+    networks:
+      - red-principal
+
+  mongodb:
+    image: mongo:8.0.20
+    container_name: librechat-mongodb
+    restart: "no"
+    command: mongod --noauth
+    volumes:
+      - librechat_mongodb_data:/data/db
+    networks:
+      - red-principal
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.1
+    container_name: librechat-meilisearch
+    restart: "no"
+    environment:
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-change_me_meili_master_key}
+    volumes:
+      - librechat_meili_data:/meili_data
+    networks:
+      - red-principal
+
+  vectordb:
+    image: pgvector/pgvector:0.8.0-pg15-trixie
+    container_name: librechat-vectordb
+    restart: "no"
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - librechat_pgdata:/var/lib/postgresql/data
+    networks:
+      - red-principal
+
+  rag_api:
+    image: registry.librechat.ai/danny-avila/librechat-rag-api-dev-lite:latest
+    container_name: librechat-rag-api
+    restart: "no"
+    depends_on:
+      - vectordb
+    env_file:
+      - ../env/librechat-service.env
+    environment:
+      DB_HOST: vectordb
+      RAG_PORT: 8000
+    networks:
+      - red-principal
+
+volumes:
+  librechat_mongodb_data:
+    name: librechat_mongodb_data
+    external: true
+  librechat_meili_data:
+    name: librechat_meili_data
+    external: true
+  librechat_pgdata:
+    name: librechat_pgdata
+    external: true
+  librechat_images:
+    name: librechat_images
+    external: true
+  librechat_uploads:
+    name: librechat_uploads
+    external: true
+  librechat_logs:
+    name: librechat_logs
+    external: true
+
+networks:
+  red-principal:
+    external: true

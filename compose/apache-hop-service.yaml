@@ -94,7 +94,7 @@ services:
         sha256sum -c /hop/projects/my_project/metadata/environments/dev.json.sha256 || { echo '❌ dev.json ha sido alterado o está corrupto'; exit 1; };
         echo '✔️ Archivos verificados. Iniciando Hop Server...';
         exec hop-server.sh -run"
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - hop-init
     networks:
@@ -121,7 +121,7 @@ services:
       - ../config:/hop/config
       - ../logs:/var/log/hop
       - ../audit:/usr/local/tomcat/webapps/ROOT/audit
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - hop-init
       - hop-server

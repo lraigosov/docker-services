@@ -40,6 +40,7 @@ Este repositorio resuelve tres problemas comunes en equipos de datos e integraci
 - Cassandra: base NoSQL distribuida opcional para alta escritura.
 - Portainer: administración visual del ciclo operativo de contenedores.
 - Portainer Agent: endpoint remoto opcional para administrar otros hosts Docker desde Portainer.
+- Open WebUI: interfaz web tipo ChatGPT para consumir modelos de Ollama.
 
 ## Arquitectura lógica
 
@@ -111,6 +112,15 @@ docker volume create apache-nifi_nifi_logs
 docker volume create nodered_nodered_data
 docker volume create mysql_mysql_data
 docker volume create cassandra_cassandra_data
+docker volume create qwen3_coder_models
+docker volume create qwen3_models
+docker volume create open-webui_open_webui_data
+docker volume create librechat_mongodb_data
+docker volume create librechat_meili_data
+docker volume create librechat_pgdata
+docker volume create librechat_images
+docker volume create librechat_uploads
+docker volume create librechat_logs
 ```
 
 ## Alcance del repositorio
@@ -144,6 +154,9 @@ docker compose -f compose/apache-nifi.service.yaml up -d
 docker compose -f compose/nodered-service.yaml --env-file env/nodered-service.env up -d
 docker compose -f compose/mysql-service.yaml --env-file env/mysql-service.env up -d
 docker compose -f compose/cassandra-service.yaml --env-file env/cassandra-service.env up -d
+docker compose -f compose/qwen3-service.yaml up -d
+docker compose -f compose/open-webui-service.yaml up -d
+docker compose -f compose/librechat-service.yaml --env-file env/librechat-service.env up -d
 ```
 
 ## Operación desde Portainer
@@ -213,6 +226,9 @@ docker compose -f compose/mysql-service.yaml --env-file env/mysql-service.env up
 
 docker compose -f compose/cassandra-service.yaml --env-file env/cassandra-service.env pull cassandra
 docker compose -f compose/cassandra-service.yaml --env-file env/cassandra-service.env up -d --no-deps --force-recreate cassandra
+
+docker compose -f compose/open-webui-service.yaml pull open-webui
+docker compose -f compose/open-webui-service.yaml up -d --no-deps --force-recreate open-webui
 ```
 
 Migración única desde stacks creados antes de esta normalización:
@@ -352,6 +368,7 @@ Alta del endpoint en Portainer:
 | MySQL | localhost | 3306 | TCP, servicio opcional |
 | Cassandra | localhost | 9042 | CQL/TCP, servicio opcional |
 | Portainer | https://localhost:9443 | 9443 (UI) / 8000 (Edge) | Gestión operativa de contenedores |
+| LibreChat | http://localhost:3200 | 3200 | Chat multi-modelo con autodetección por endpoint Ollama |
 
 ## Variables de entorno
 
@@ -435,6 +452,158 @@ CASSANDRA_MAX_HEAP_SIZE=512M
 CASSANDRA_HEAP_NEWSIZE=100M
 ```
 
+### Qwen3-Coder
+
+El servicio se expone en `http://HOST_DEL_SERVIDOR:11434` para que otros equipos de tu red local puedan invocarlo.
+
+Despliegue:
+
+```sh
+docker compose -f compose/qwen3-coder-service.yaml up -d
+```
+
+Modelo por defecto:
+
+```sh
+QWEN3_CODER_MODEL=qwen3-coder:latest
+```
+
+Ejemplo de invocación desde otro PC de la red:
+
+```sh
+curl http://HOST_DEL_SERVIDOR:11434/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{\"model\":\"qwen3-coder:latest\",\"prompt\":\"Escribe una funcion en Python\",\"stream\":false}"
+```
+
+Necesitas para exponerlo en la red local:
+
+1. La IP LAN del host donde corre Docker.
+2. El puerto `11434` abierto en el firewall del host.
+3. Que el host no tenga una política de red que bloquee conexiones entrantes desde tu subred.
+4. Que el volumen `qwen3_coder_models` exista antes del primer despliegue.
+
+### Consumo desde VS Code
+
+La forma más directa de consumir este modelo desde VS Code es con una extensión que soporte proveedores compatibles con Ollama, por ejemplo Continue.
+
+Configuración mínima para Continue:
+
+```json
+{
+  "models": [
+    {
+      "title": "Qwen3-Coder",
+      "provider": "ollama",
+      "model": "qwen3-coder:latest",
+      "apiBase": "http://IP_DEL_HOST:11434"
+    }
+  ]
+}
+```
+
+Si VS Code corre en la misma máquina que Docker, puedes usar `http://localhost:11434`. Si corre en otra PC, usa la IP LAN del host donde quedó publicado el servicio.
+
+Copilot Chat no permite apuntar libremente a un modelo local arbitrario; para consumo directo de este Ollama local, usa una extensión que acepte un endpoint OpenAI/Ollama o un proveedor similar.
+
+### Qwen3 (multipropósito)
+
+Servicio dedicado para modelo generalista Qwen3 con los mismos límites de recursos que Qwen3-Coder.
+
+Despliegue:
+
+```sh
+docker compose -f compose/qwen3-service.yaml up -d
+```
+
+Modelo por defecto:
+
+```sh
+QWEN3_MODEL=qwen3:latest
+```
+
+Endpoint API:
+
+```text
+http://HOST_DEL_SERVIDOR:11435
+```
+
+Prueba rápida:
+
+```sh
+curl http://HOST_DEL_SERVIDOR:11435/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{\"model\":\"qwen3:latest\",\"prompt\":\"Resume en una linea que puedes hacer\",\"stream\":false}"
+```
+
+### Open WebUI (chat tipo ChatGPT)
+
+Open WebUI permite usar una interfaz web para conversar con Qwen3-Coder y otros modelos Ollama desde navegador.
+
+Despliegue:
+
+```sh
+docker compose -f compose/open-webui-service.yaml up -d
+```
+
+Acceso web:
+
+```text
+http://HOST_DEL_SERVIDOR:3100
+```
+
+Notas operativas:
+
+1. El servicio usa persistencia en el volumen `open-webui_open_webui_data`.
+2. Está configurado para hablar con múltiples instancias Ollama dentro de la red Docker `red-principal` usando `OLLAMA_BASE_URLS`.
+3. Configuración actual de backends: `http://qwen3-coder:11434;http://qwen3:11434`.
+4. Puedes agregar más modelos con `ollama pull` y aparecerán en el selector del chat.
+5. Si despliegas otra instancia de Ollama, agrega su URL al `OLLAMA_BASE_URLS` y recrea `open-webui`.
+
+### LibreChat (chat tipo ChatGPT multi-endpoint)
+
+LibreChat permite consumir múltiples endpoints Ollama con autodetección de modelos por endpoint (`models.fetch: true`).
+
+Despliegue:
+
+```sh
+docker compose -f compose/librechat-service.yaml --env-file env/librechat-service.env up -d
+```
+
+Acceso web:
+
+```text
+http://HOST_DEL_SERVIDOR:3200
+```
+
+Notas operativas:
+
+1. El stack usa `compose/librechat-service.yaml`, `env/librechat-service.env` y `config/librechat.yaml`.
+2. La detección automática aplica a los endpoints configurados en `config/librechat.yaml`.
+3. Endpoints iniciales: `ollama-coder` (`qwen3-coder`) y `ollama-general` (`qwen3`).
+4. Para sumar otra instancia Ollama, agrega un nuevo bloque en `endpoints.custom` con nombre que empiece por `ollama-` y `models.fetch: true`.
+5. Incluye persistencia en volúmenes externos para MongoDB, Meilisearch, RAG y datos de la app.
+
+### env/librechat-service.env
+
+Variables mínimas incluidas:
+
+```env
+HOST=0.0.0.0
+PORT=3200
+DOMAIN_CLIENT=http://localhost:3200
+DOMAIN_SERVER=http://localhost:3200
+MONGO_URI=mongodb://mongodb:27017/LibreChat
+MEILI_HOST=http://meilisearch:7700
+MEILI_MASTER_KEY=change_me_meili_master_key
+RAG_API_URL=http://rag_api:8000
+JWT_SECRET=change_me_jwt_secret
+JWT_REFRESH_SECRET=change_me_jwt_refresh_secret
+CREDS_KEY=change_me_creds_key
+CREDS_IV=change_me_creds_iv
+ENDPOINTS=custom
+```
+
 ## Mejoras y optimizaciones aplicadas
 
 1. Se definió una plantilla recomendada para variables de Airflow (sin aplicarla automáticamente).
@@ -470,6 +639,9 @@ docker compose -f compose/apache-nifi.service.yaml config
 docker compose -f compose/nodered-service.yaml --env-file env/nodered-service.env config
 docker compose -f compose/mysql-service.yaml --env-file env/mysql-service.env config
 docker compose -f compose/cassandra-service.yaml --env-file env/cassandra-service.env config
+docker compose -f compose/qwen3-service.yaml config
+docker compose -f compose/open-webui-service.yaml config
+docker compose -f compose/librechat-service.yaml --env-file env/librechat-service.env config
 ```
 
 ## WSL (Ubuntu-24.04)
@@ -495,6 +667,10 @@ docker-services/
 │   ├── mysql-service.yaml
 │   ├── n8n-service.yaml
 │   ├── nodered-service.yaml
+│   ├── open-webui-service.yaml
+│   ├── librechat-service.yaml
+│   ├── qwen3-service.yaml
+│   ├── qwen3-coder-service.yaml
 │   ├── portainer-agent-service.yaml
 │   ├── portainer-service.yaml
 │   └── postgresql-service.yaml
@@ -504,8 +680,11 @@ docker-services/
 │   ├── grafana-service.env
 │   ├── mysql-service.env
 │   ├── n8n-service.env
-│   └── nodered-service.env
+│   ├── nodered-service.env
+│   └── librechat-service.env
 ├── config/
+│   ├── librechat.yaml
+│   └── .env
 ├── container-audit-ubuntu-24.04.md
 ├── devlog.md
 ├── estructura.txt

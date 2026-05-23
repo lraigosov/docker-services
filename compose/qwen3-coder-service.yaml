@@ -1,0 +1,47 @@
+name: qwen3-coder
+
+services:
+  qwen3-coder:
+    image: ollama/ollama:latest
+    container_name: qwen3-coder
+    restart: "no"
+    ports:
+      - "0.0.0.0:11434:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 24h
+    cpus: "4.0"
+    mem_limit: 16g
+    memswap_limit: 20g
+    shm_size: 1g
+    volumes:
+      - qwen3_coder_models:/root/.ollama
+    networks:
+      - red-principal
+
+  qwen3-coder-init:
+    image: ollama/ollama:latest
+    container_name: qwen3-coder_init
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - until ollama list >/dev/null 2>&1; do echo 'Esperando al servidor de Qwen3-Coder...'; sleep 5; done; ollama pull "$${QWEN3_CODER_MODEL}"
+    depends_on:
+      - qwen3-coder
+    environment:
+      OLLAMA_HOST: http://qwen3-coder:11434
+      QWEN3_CODER_MODEL: ${QWEN3_CODER_MODEL:-qwen3-coder:latest}
+    volumes:
+      - qwen3_coder_models:/root/.ollama
+    networks:
+      - red-principal
+
+volumes:
+  qwen3_coder_models:
+    name: qwen3_coder_models
+    external: true
+
+networks:
+  red-principal:
+    external: true
