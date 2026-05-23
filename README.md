@@ -47,6 +47,35 @@ Este repositorio resuelve tres problemas comunes en equipos de datos e integraci
 
 ## Arquitectura lógica
 
+Vista resumida:
+
+```mermaid
+flowchart LR
+  clients["Usuarios y clientes"]
+
+  subgraph host["Host Docker en WSL Ubuntu-24.04"]
+    portainer["Portainer"]
+    network["Red red-principal"]
+    data["Datos compartidos\nPostgreSQL y Redis"]
+    automation["Automatización y observabilidad\nn8n, Airflow, Hop, NiFi, Grafana, Node-RED"]
+    ai["IA local\nOpen WebUI, LibreChat, Qwen3 y Qwen3-Coder"]
+    optional["Servicios opcionales\nMySQL, Cassandra, Portainer Agent"]
+  end
+
+  clients --> portainer
+  clients --> automation
+  clients --> ai
+  portainer --> network
+  network --> data
+  network --> automation
+  network --> ai
+  network --> optional
+  automation --> data
+  ai --> data
+```
+
+Vista detallada:
+
 ```mermaid
 flowchart TB
   subgraph clients["Clientes y acceso"]
