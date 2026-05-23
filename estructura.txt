@@ -16,6 +16,10 @@ docker-services/
 |       mysql-service.yaml
 |       n8n-service.yaml
 |       nodered-service.yaml
+|       open-webui-service.yaml
+|       librechat-service.yaml
+|       qwen3-coder-service.yaml
+|       qwen3-service.yaml
 |       postgresql-service.yaml
 |
 +---env/
@@ -25,9 +29,11 @@ docker-services/
 |       mysql-service.env
 |       n8n-service.env
 |       nodered-service.env
+|       librechat-service.env
 |
 +---config/
 |       .env
+|       librechat.yaml
 |
 +---audit/
 +---files/

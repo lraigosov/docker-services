@@ -4,7 +4,7 @@ services:
   nifi:
     image: apache/nifi:latest
     container_name: nifi
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "8443:8443"  # Accederás en https://localhost:8443/nifi
     environment:

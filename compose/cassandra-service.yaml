@@ -4,7 +4,7 @@ services:
   cassandra:
     image: cassandra:latest
     container_name: cassandra-server
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "${CASSANDRA_PORT:-9042}:9042"
     environment:

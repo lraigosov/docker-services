@@ -30,7 +30,7 @@ services:
   grafana-server:
     image: grafana/grafana:latest
     container_name: grafana-server
-    restart: always
+    restart: "no"
     depends_on:
       - grafana-init
     networks:
